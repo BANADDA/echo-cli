@@ -18,7 +18,7 @@ program
       const response = await axios.get(`${API_BASE_URL}/jobs`);
       console.log('Available Training Jobs:');
       response.data.forEach(job => {
-        console.log(`Job ID: ${job.docId}, Model ID: ${job.modelId}, Dataset ID: ${job.datasetId}, Status: ${job.status}`);
+        console.log(`Job ID: ${job.id}, Model ID: ${job.modelId}, Dataset ID: ${job.datasetId}, Status: ${job.trainingStatus}`);
       });
     } catch (error) {
       console.error('Error fetching jobs:', error.message);
