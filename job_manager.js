@@ -86,7 +86,21 @@ program
       console.error(`Failed to pull or run Docker image ${imageTag}:`, error.message);
     }
   });
-
-program.parse(process.argv);
+  
+program
+  .command('complete-job <jobId> <resultsUrl>')
+  .description('Mark a training job as completed and upload results')
+  .action(async (jobId, resultsUrl) => {
+      try {
+          const response = await axios.post(`${API_BASE_URL}/complete-job`, {
+              docId: jobId,
+              status: 'Completed',
+              resultsUrl: resultsUrl
+          });
+          console.log('Job marked as completed:', response.data.message);
+      } catch (error) {
+          console.error(`Error marking job as completed:`, error.message);
+      }
+  });
 
 program.parse(process.argv);
