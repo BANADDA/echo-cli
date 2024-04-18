@@ -40,6 +40,20 @@ function makeAuthenticatedRequest(method, url) {
     }
   });
 }
+// Function to make authenticated requests
+function makePostAuthenticatedRequest(method, url, data) {
+  const authToken = config.token;
+  // console.log("Method $ Url $ authToken: ", method, url, authToken);
+  return axios({
+    method: method,
+    url: url,
+    headers: {
+      'x-access-token': authToken
+    },
+    data: data // Include payload data
+  });
+}
+
 
 program
   .version('1.0.0')
@@ -69,6 +83,17 @@ program
   login(email, password);
 });
 
+// Command to logout
+program
+  .command('logout')
+  .description('Logout from the application')
+  .action(() => {
+    // Clear the saved token in configuration
+    delete config.token;
+    fs.writeFileSync(configFile, JSON.stringify(config, null, 2));
+    console.log('Logged out successfully.');
+  });
+
 // List pending training jobs
 program
   .command('list-jobs')
@@ -92,7 +117,7 @@ program
 .description('List all available training jobs')
 .action(async () => {
   try {
-    const response = await makeAuthenticatedRequest('GET', `${API_BASE_URL}/all-jobs`);
+    const response = await makeAuthenticatedRequest('GET', `${API_BASE_URL}/all-jobs`, authToken);
     console.log('Available Training Jobs:');
     response.data.forEach(job => {
       console.log(`Job ID: ${job.id}, Model ID: ${job.modelId}, Dataset ID: ${job.datasetId}, Status: ${job.trainingStatus}`);
@@ -108,7 +133,7 @@ program
   .description('View metadata for a specific job')
   .action(async (jobId) => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/jobs/${jobId}`);
+      const response = await makeAuthenticatedRequest('GET', `${API_BASE_URL}/jobs/${jobId}`, authToken);
       console.log('Job Details:', response.data);
     } catch (error) {
       console.error(`Error fetching job ${jobId}:`, error.message);
@@ -163,23 +188,40 @@ program
       console.error(`Failed to pull or run Docker image ${imageTag}:`, error.message);
     }
   });
-  
+
   program
   .command('complete-job <jobId> <resultsUrl> <status> <volunteerAddress>')
   .description('Mark a training job as completed, upload results, and assign rewards')
   .action(async (jobId, resultsUrl, status, volunteerAddress) => {
-      try {
-          const response = await axios.post(`${API_BASE_URL}/complete-job`, {
-              docId: jobId,
-              status: status,
-              resultsUrl: resultsUrl,
-              volunteerAddress: volunteerAddress
-          });
-          console.log('Job marked as completed:', response.data.message);
-      } catch (error) {
-          console.error(`Error marking job as completed:`, error.message);
-      }
+    try {
+      const response = await makePostAuthenticatedRequest('POST', `${API_BASE_URL}/complete-job`, {
+        docId: jobId,
+        status: status,
+        resultsUrl: resultsUrl,
+        volunteerAddress: volunteerAddress
+      });
+      console.log('Job marked as completed:', response.data.message);
+    } catch (error) {
+      console.error(`Error marking job as completed:`, error.message);
+    }
   });
+  
+  // program
+  // .command('complete-job <jobId> <resultsUrl> <status> <volunteerAddress>')
+  // .description('Mark a training job as completed, upload results, and assign rewards')
+  // .action(async (jobId, resultsUrl, status, volunteerAddress) => {
+  //     try {
+  //         const response = await axios.post(`${API_BASE_URL}/complete-job`, {
+  //             docId: jobId,
+  //             status: status,
+  //             resultsUrl: resultsUrl,
+  //             volunteerAddress: volunteerAddress
+  //         });
+  //         console.log('Job marked as completed:', response.data.message);
+  //     } catch (error) {
+  //         console.error(`Error marking job as completed:`, error.message);
+  //     }
+  // });
 
   program
   .command('register-volunteer')
@@ -222,46 +264,5 @@ program
       console.error('Error during registration:', error.response ? error.response.data : error.message);
     }
   });
-
-  // program
-  // .command('register-volunteer')
-  // .description('Register a new volunteer')
-  // .action(async () => {
-  //   try {
-  //     // Dynamically import the inquirer module
-  //     const inquirer = (await import('inquirer')).default;
-
-  //     // Use inquirer as normal once imported
-  //     const answers = await inquirer.prompt([
-  //       {
-  //         type: 'input',
-  //         name: 'name',
-  //         message: 'Enter your name:',
-  //         validate: input => !!input || 'Name is required!'
-  //       },
-  //       {
-  //         type: 'input',
-  //         name: 'email',
-  //         message: 'Enter your email:',
-  //         validate: input => !!input || 'Email is required!'
-  //       }
-  //     ]);
-
-  //     // Post the registration data to the server
-  //     const response = await axios.post(`${API_BASE_URL}/register-volunteer`, {
-  //       name: answers.name,
-  //       email: answers.email
-  //     });
-
-  //     // Log the successful registration
-  //     console.log('Registration successful!');
-  //     console.log(`Your Ethereum Address: ${response.data.ethereumAddress}`);
-  //     console.log(`Your Private Key: ${response.data.privateKey} (SAVE THIS SECURELY)`);
-
-  //   } catch (error) {
-  //     // Handle errors from axios or inquirer
-  //     console.error('Error during registration:', error.response ? error.response.data : error.message);
-  //   }
-  // });
 
 program.parse(process.argv);
