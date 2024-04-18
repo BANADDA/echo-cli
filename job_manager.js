@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 const axios = require('axios');
+// const inquirer = require('inquirer');
 const { program } = require('commander');
 const { exec } = require('child_process');
 // Set the base URL for your server API
@@ -87,20 +88,62 @@ program
     }
   });
   
-program
-  .command('complete-job <jobId> <resultsUrl>')
-  .description('Mark a training job as completed and upload results')
-  .action(async (jobId, resultsUrl) => {
+  program
+  .command('complete-job <jobId> <resultsUrl> <status> <volunteerAddress>')
+  .description('Mark a training job as completed, upload results, and assign rewards')
+  .action(async (jobId, resultsUrl, status, volunteerAddress) => {
       try {
           const response = await axios.post(`${API_BASE_URL}/complete-job`, {
               docId: jobId,
-              status: 'Completed',
-              resultsUrl: resultsUrl
+              status: status,
+              resultsUrl: resultsUrl,
+              volunteerAddress: volunteerAddress
           });
           console.log('Job marked as completed:', response.data.message);
       } catch (error) {
           console.error(`Error marking job as completed:`, error.message);
       }
+  });
+
+  program
+  .command('register-volunteer')
+  .description('Register a new volunteer')
+  .action(async () => {
+    try {
+      // Dynamically import the inquirer module
+      const inquirer = (await import('inquirer')).default;
+
+      // Use inquirer as normal once imported
+      const answers = await inquirer.prompt([
+        {
+          type: 'input',
+          name: 'name',
+          message: 'Enter your name:',
+          validate: input => !!input || 'Name is required!'
+        },
+        {
+          type: 'input',
+          name: 'email',
+          message: 'Enter your email:',
+          validate: input => !!input || 'Email is required!'
+        }
+      ]);
+
+      // Post the registration data to the server
+      const response = await axios.post(`${API_BASE_URL}/register-volunteer`, {
+        name: answers.name,
+        email: answers.email
+      });
+
+      // Log the successful registration
+      console.log('Registration successful!');
+      console.log(`Your Ethereum Address: ${response.data.ethereumAddress}`);
+      console.log(`Your Private Key: ${response.data.privateKey} (SAVE THIS SECURELY)`);
+
+    } catch (error) {
+      // Handle errors from axios or inquirer
+      console.error('Error during registration:', error.response ? error.response.data : error.message);
+    }
   });
 
 program.parse(process.argv);
